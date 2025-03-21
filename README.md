@@ -27,3 +27,12 @@ You can also configure the various parameters in the scriot itself by editing /u
 2.  Delete /etc/systemd/system/fan_control.service
 3.  Delete /usr/local/bin/fan_control.py
 4.  Run the command `systemctl daemon-reload`
+
+## My setup
+My NAS is running in the case created using [https://github.com/vijaygill/CM3588-NAS-Case](https://github.com/vijaygill/CM3588-NAS-Case) which is a fork of great work by [https://github.com/Nighthater/CM3588-NAS-Case](https://github.com/Nighthater/CM3588-NAS-Case).
+
+In my repo, I have just modified his case to be a bit taller.
+
+I am using a Noctua 80mm fan.
+
+![New Case - Assembled](https://github.com/user-attachments/assets/ff35cb40-59f0-4c74-8cb2-99f19f7d2271)
