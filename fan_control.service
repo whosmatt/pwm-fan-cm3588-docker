@@ -4,7 +4,7 @@ Description=Fan Controller Service
 [Service]
 ExecStart=/usr/bin/python3 /usr/local/bin/fan_control.py
 Restart=always
-Environment="PYTHONUNBUFFERED=1"
+Environment=PYTHONUNBUFFERED=1 DEBUG=false
 
 [Install]
 WantedBy=multi-user.target

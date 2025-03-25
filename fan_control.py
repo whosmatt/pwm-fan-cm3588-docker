@@ -4,7 +4,7 @@ import time
 import logging
 from systemd.journal import JournalHandler
 
-DEBUG = False
+DEBUG = os.environ.get("DEBUG", "1") in ["1", "true"]
 
 if DEBUG:
     logging.basicConfig(
