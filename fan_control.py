@@ -4,7 +4,9 @@ import time
 import logging
 from systemd.journal import JournalHandler
 
-DEBUG = os.environ.get("DEBUG", "1") in ["1", "true"]
+# Set debug mode based on the environment variable "DEBUG"
+# The DEBUG variable can be set to "true", "True", or "1" (case-insensitive)
+DEBUG = os.environ.get("DEBUG", "1").lower() in ["1", "true", "on"]
 
 if DEBUG:
     logging.basicConfig(
@@ -28,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Configuration variables
 SLEEP_TIME = 5 if DEBUG else 15
 
-MIN_STATE = 1
+MIN_STATE = 1  # if you set it to 0, the fan will switch off when temperature falls below LOWER_TEMP_THRESHOLD
 LOWER_TEMP_THRESHOLD = 45.0
 UPPER_TEMP_THRESHOLD = 65.0
 MIN_DELTA = 0.01  # Minimum temperature change to trigger speed change
@@ -55,7 +57,7 @@ def get_fan_device():
                     if DEVICE_TYPE_PWM_FAN in f.read().strip():
                         return dev_path
             except Exception as e:
-                logger.error(f'Error while getting fan device: {e}')
+                logger.error(f"Error while getting fan device: {e}")
     return None
 
 
@@ -83,6 +85,12 @@ def set_fan_speed(device, speed):
 
 
 def get_temperature_slots():
+    """
+    Creates predefined temperature thresholds and corresponding fan states.
+
+    Returns:
+        list of tuples: Each tuple contains (fan_state, temperature_threshold)
+    """
     res = None
     max_state = 0
     fan_device = get_fan_device()
@@ -91,7 +99,7 @@ def get_temperature_slots():
         with open(f"{fan_device}/max_state", "r") as f:
             max_state = int(f.read().strip())
     except Exception as e:
-        logger.error(f'Error while getting temperature slots: {e}')
+        logger.error(f"Error while getting temperature slots: {e}")
         max_state = 0
         pass
 
@@ -106,8 +114,15 @@ def get_temperature_slots():
 
 
 def adjust_speed_based_on_temperature(current_temp):
-    """Adjusts speed based on current temperature."""
+    """
+    Adjusts the fan speed based on the current temperature.
 
+    Args:
+        current_temp (float): The current CPU temperature.
+
+    Returns:
+        None
+    """
     temperature_slots = get_temperature_slots()
     desired_slot = [
         (state, temp) for state, temp in temperature_slots if current_temp >= temp
@@ -135,7 +150,15 @@ def adjust_speed_based_on_temperature(current_temp):
 
 
 def get_current_temp():
-    """Read CPU temperature from sys file."""
+    """
+    Reads the CPU temperature from system files.
+
+    Returns:
+        float: The maximum CPU temperature (in degrees Celsius) or 0 if no valid readings are found.
+
+    Raises:
+        Exception: If an error occurs while reading temperature data.
+    """
     temps = []
     try:
         for zone in os.listdir(THERMAL_DIR):
@@ -146,7 +169,7 @@ def get_current_temp():
                         temp = float(f.read().strip()) / 1000.0
                         temps.append(temp)
     except Exception as e:
-        logger.error(f'Error while getting current temperature: {e}')
+        logger.error(f"Error while getting current temperature: {e}")
     return max(temps) if temps else 0.0
 
 
@@ -166,6 +189,12 @@ def main():
         return
 
     logger.info(f"Fan device: {fan_device}")
+    logger.info("Temperature slots:")
+    logger.info(
+        "(when temperature reaches the threshold of a slot, the fan state is set to the corresponding fan_state value)"
+    )
+    for fan_state, temperature_threshold in get_temperature_slots():
+        logger.info(f"    {format_temp(temperature_threshold):4}: {fan_state}")
 
     while True:
         adjust_fan()
