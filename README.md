@@ -5,6 +5,9 @@ Developed and tested on Armbian only.
 
 Might work on other RK3588 SBC also (like Orange PI 5+).
 
+### Disclaimer
+Usage of this software is purely at your own risk. I am just sharing what I developed for myself and use at home.
+
 ### Features:
 1. Runs as background service
 2. Changes fan speed as per the temperature (configurable).
