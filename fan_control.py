@@ -191,8 +191,9 @@ def main():
     logger.info(f"Fan device: {fan_device}")
     logger.info("Temperature slots:")
     logger.info(
-        "(when temperature reaches the threshold of a slot, the fan state is set to the corresponding fan_state value)"
+        "    * when temperature reaches the threshold of a slot, the fan state is set to the corresponding fan_state value)"
     )
+    logger.info(f'    * when temperature falls below LOWER_TEMP_THRESHOLD (i.e. {format_temp(LOWER_TEMP_THRESHOLD)}), state is set to MIN_STATE (i.e. {MIN_STATE})')
     for fan_state, temperature_threshold in get_temperature_slots():
         logger.info(f"    {format_temp(temperature_threshold):4}: {fan_state}")
 
