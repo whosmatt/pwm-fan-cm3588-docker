@@ -13,7 +13,7 @@ Usage of this software is purely at your own risk. I am just sharing what I deve
 2. Changes fan speed as per the temperature (configurable).
 
 ## Test before you install
-1. Run `./text.py` and it should run without any errors. It should show some messages like following (example taken from my machine)
+1. Run `./test.py` and it should run without any errors. It should show some messages like following (example taken from my machine)
    ```
    2025-04-10 23:19:59,742 - INFO - Fan device: /sys/class/thermal/cooling_device4
    2025-04-10 23:19:59,743 - INFO - Maximum state allowed: 5
