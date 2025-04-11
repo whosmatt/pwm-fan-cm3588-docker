@@ -47,9 +47,7 @@ You can also configure the various parameters in the scriot itself by editing /u
 4.  Run the command `systemctl daemon-reload`
 
 ## My setup
-My NAS is running in the case created using [https://github.com/vijaygill/CM3588-NAS-Case](https://github.com/vijaygill/CM3588-NAS-Case) which is a fork of great work by [https://github.com/Nighthater/CM3588-NAS-Case](https://github.com/Nighthater/CM3588-NAS-Case).
-
-In my repo, I have just modified the original case to be a bit taller.
+My NAS is running in the case created using the great work by [https://github.com/Nighthater/CM3588-NAS-Case](https://github.com/Nighthater/CM3588-NAS-Case).
 
 I am using a Noctua 80mm fan.
 
