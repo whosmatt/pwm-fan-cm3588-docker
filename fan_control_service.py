@@ -2,6 +2,9 @@
 import os
 import time
 import logging
+import glob
+import subprocess
+import shutil
 from systemd.journal import JournalHandler
 
 # Set debug mode based on the environment variable "DEBUG"
@@ -34,6 +37,9 @@ MIN_STATE = 1  # if you set it to 0, the fan will switch off when temperature fa
 LOWER_TEMP_THRESHOLD = 45.0
 UPPER_TEMP_THRESHOLD = 65.0
 MIN_DELTA = 0.01  # Minimum temperature change to trigger speed change
+
+NVME_DEVICES = "/dev/nvme?"
+NVME_COMMAND = "nvme"
 
 THERMAL_DIR = "/sys/class/thermal"
 DEVICE_TYPE_PWM_FAN = "pwm-fan"
@@ -118,7 +124,7 @@ def adjust_speed_based_on_temperature(current_temp):
     Adjusts the fan speed based on the current temperature.
 
     Args:
-        current_temp (float): The current CPU temperature.
+        current_temp (float): The current temperature.
 
     Returns:
         None
@@ -135,7 +141,7 @@ def adjust_speed_based_on_temperature(current_temp):
         desired_slot = temperature_slots[-1]
 
     logger.debug(
-        f"desired_slot (current_temp: {current_temp}): {desired_slot} (out of {temperature_slots})"
+        f"desired_slot (current_temp: {format_temp(current_temp)}): {desired_slot} (out of {temperature_slots})"
     )
 
     desired_state, _ = desired_slot
@@ -149,12 +155,72 @@ def adjust_speed_based_on_temperature(current_temp):
         set_fan_speed(fan_device, desired_state)
 
 
-def get_current_temp():
+def check_command_exists(command):
+    # Use shutil.which to find the command in the PATH
+    res = shutil.which(command) is not None
+    return res
+
+
+def get_current_nvme_temperatures():
     """
-    Reads the CPU temperature from system files.
+    Reads the NVME temperatures from using nvme command.
 
     Returns:
-        float: The maximum CPU temperature (in degrees Celsius) or 0 if no valid readings are found.
+        The list of nvme devices and their temperatures.
+
+    Raises:
+        Exception: If an error occurs while reading temperature data.
+    """
+    temps = []
+    try:
+        if not check_command_exists(NVME_COMMAND):
+            return temps
+        nvme_devices = glob.glob(NVME_DEVICES)
+        for device in nvme_devices:
+            try:
+                logger.debug(f"Getting temperature for nvme: {device}")
+                # Run the nvme smart-log command and capture the output
+                result = subprocess.run(
+                    [NVME_COMMAND, "smart-log", device],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+
+                # Extract the line containing the temperature information
+                for line in result.stdout.splitlines():
+                    if line.lower().startswith("temperature"):
+                        # Split the line to extract the temperature value
+                        parts = line.split(":")
+                        if len(parts) > 1:
+                            temp_str = parts[1].strip().split()[0]
+                            temp_str = "".join([x for x in temp_str if x.isnumeric()])
+                            try:
+                                # Convert the temperature string to a float
+                                temperature_celsius = float(temp_str)
+                                device_name = os.path.basename(device)
+                                temps.append((device_name, temperature_celsius))
+                            except ValueError:
+                                logger.error(
+                                    f"Error converting temperature to float: {temp_str}"
+                                )
+                        else:
+                            logger.error("Unexpected output format")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Command failed with error: {e.stderr}")
+            except Exception as e:
+                logger.error(f"Command failed with error: {e}")
+    except Exception as e:
+        logger.error(f"Error while getting nvme temperatures: {e}")
+    return temps
+
+
+def get_current_cpu_temperatures():
+    """
+    Reads the CPU temperatures from system files.
+
+    Returns:
+        The list of cpu devices and their temperatures.
 
     Raises:
         Exception: If an error occurs while reading temperature data.
@@ -167,10 +233,25 @@ def get_current_temp():
                 if os.path.exists(temp_file):
                     with open(temp_file, "r") as f:
                         temp = float(f.read().strip()) / 1000.0
-                        temps.append(temp)
+                        temps.append((zone, temp))
     except Exception as e:
         logger.error(f"Error while getting current temperature: {e}")
-    return max(temps) if temps else 0.0
+    return temps
+
+
+def get_current_temp():
+    temps = get_current_cpu_temperatures() + get_current_nvme_temperatures()
+    temps.sort(key=lambda x: x[0])
+    logger.debug("Current temperatures of all devices:")
+    for device, temp in temps:
+        logger.debug(f"    {device:<20}: {format_temp(temp)}")
+
+    max_temp = max([x[1] for x in temps])
+    max_devices = [x[0] for x in temps if x[1] >= max_temp]
+    max_devices = ", ".join(max_devices)
+
+    logger.debug(f"Maximum temperature {format_temp(max_temp)} found for {max_devices}")
+    return max_temp
 
 
 def adjust_fan():
@@ -193,9 +274,16 @@ def main():
     logger.info(
         "    * when temperature reaches the threshold of a slot, the fan state is set to the corresponding fan_state value)"
     )
-    logger.info(f'    * when temperature falls below LOWER_TEMP_THRESHOLD (i.e. {format_temp(LOWER_TEMP_THRESHOLD)}), state is set to MIN_STATE (i.e. {MIN_STATE})')
+    logger.info(
+        f"    * when temperature falls below LOWER_TEMP_THRESHOLD (i.e. {format_temp(LOWER_TEMP_THRESHOLD)}), state is set to MIN_STATE (i.e. {MIN_STATE})"
+    )
     for fan_state, temperature_threshold in get_temperature_slots():
         logger.info(f"    {format_temp(temperature_threshold):4}: {fan_state}")
+
+    if not check_command_exists(NVME_COMMAND):
+        logger.warning(
+            f"The command {NVME_COMMAND} does not exist. Install using apt/apt-get."
+        )
 
     while True:
         adjust_fan()
