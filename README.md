@@ -12,7 +12,7 @@ Usage of this software is purely at your own risk. I am just sharing what I deve
 1. Runs as background service
 2. Changes fan speed as per the temperature (configurable).
 
-## Test before you install
+## Test before you install as background service.
 1. Run `./test.py` and it should run without any errors. It should show some messages like following (example taken from my machine)
    ```
    2025-04-10 23:19:59,742 - INFO - Fan device: /sys/class/thermal/cooling_device4
@@ -21,7 +21,13 @@ Usage of this software is purely at your own risk. I am just sharing what I deve
    ```
 2. Try setting some speed for the fan where 0 mean off, and any value above 0 upto "Maximum state" sets different speeds.
    For example `./test.py 5` will set it to maximum speed on my machine.
-3. If all goes well, you can go ahead to install the background service as per following instructions.
+3. If all goes well, test a bit more as following instructions.
+
+## Test even more before you install as background service.
+1. Run the script `./fan_control_service.py`. This runs the script in foreground and debug logging enabled. The logs are pretty detailed.
+2. Simulate stress on the CPU using `stress --cpu 8 --timeout 120` command. This will put CPU in 100% usafe for 120 seconds.
+3. Notice the fan speeding up when temperature rises and slowing down again when the command finishes and CPU cools down.
+4. If all goes well, proceed to install it as background service.
 
 ## Steps to get it running as background service.
 1. Clone the repository
