@@ -24,18 +24,17 @@ Usage of this software is purely at your own risk. I am just sharing what I deve
 3. If all goes well, test a bit more as following instructions.
 
 ## Test even more before you install as background service.
-1. Run the script `./fan_control.py`. This runs the script in foreground and debug logging enabled. The logs are pretty detailed.
-2. Simulate stress on the CPU using `stress --cpu 8 --timeout 120` command. This will put CPU in 100% load for 120 seconds.
-3. Notice the fan speeding up when temperature rises and slowing down again when the command finishes and CPU cools down.
-4. If all goes well, proceed to install it as background service.
+1. In one terminal, run the script `./fan_control.py`. This runs the script in foreground and debug logging enabled. The logs are pretty detailed. Leave it running.
+2. In another terminal, simulate stress on the CPU using `stress --cpu 8 --timeout 120` command. This will put CPU in 100% load for 120 seconds.
+3. In the first terminal, notice the logs and also the fan speeding up when temperature rises and slowing down again when the command finishes and CPU cools down.
+4. If all goes well, kill the script by pressing ctrl-c and proceed to install it as background service.
 
 ## Steps to get it running as background service.
-1. Clone the repository
-2. The script has dependency on python systemd module (to send log messages to system journal). I installed it using `apt-get install python3-systemd`
-3. Copy the file fan_control.py to fan_control.py
-4. Copy the file fan_control.service /etc/systemd/system/fan_control.service
-5. Run the command `systemctl daemon-reload`
-6. Enable the service by running `systemctl enable --now fan_control.service`
+1. The script has dependency on python systemd module (to send log messages to system journal). I installed it using `apt-get install python3-systemd`
+2. Copy the file fan_control.py to fan_control.py
+3. Copy the file fan_control.service /etc/systemd/system/fan_control.service
+4. Run the command `systemctl daemon-reload`
+5. Enable the service by running `systemctl enable --now fan_control.service`
 
 Now you can see the logs by running `journalctl -u pwm-fan-cm3588`
 You can also configure the various parameters in the scriot itself by editing /usr/local/bin/fan_control.py (like temperature ranges which controls various fan speeds).
