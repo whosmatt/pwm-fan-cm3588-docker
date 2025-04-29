@@ -3,13 +3,13 @@
 import argparse
 import os
 
-from fan_control_service import get_fan_device, get_fan_speed, set_fan_speed, logger
+from fan_control import get_fan_device, get_fan_speed, set_fan_speed, logger
 
 
 def main():
     parser = argparse.ArgumentParser(description="Thermal Cooling Device Control")
     parser.add_argument(
-        "desired_state", nargs="?", default=None, help="Desired cooling device state"
+        "--desired-state", nargs="?", default=None, help="Desired cooling device state"
     )
     args = parser.parse_args()
 
@@ -27,17 +27,17 @@ def main():
         logger.info(f"Maximum state allowed: {max_state}")
 
         desired_state = int(args.desired_state) if args.desired_state else None
-        if desired_state:
+        if desired_state is None:
+            current_state = get_fan_speed(fan_device)
+            logger.info(f"Current state is set to: {current_state}")
+        else:
             if desired_state > max_state:
                 logger.error(
                     f"Error: Desired state {desired_state} exceeds the maximum allowed state {max_state}."
                 )
                 return
-            set_fan_speed(fan_device, args.desired_state)
-            logger.info(f"Desired state set to: {args.desired_state}")
-        else:
-            current_state = get_fan_speed(fan_device)
-            logger.info(f"Current state is set to: {current_state}")
+            set_fan_speed(fan_device, desired_state)
+            logger.info(f"Desired state set to: {desired_state}")
     except Exception as e:
         logger.error(f"Error: {e}")
 

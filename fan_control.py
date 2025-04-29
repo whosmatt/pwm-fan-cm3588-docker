@@ -80,7 +80,7 @@ def get_fan_speed(device):
 
 def set_fan_speed(device, speed):
     try:
-        logger.debug(f"setting fan speed to {speed}")
+        logger.warning(f"setting fan speed to {speed}")
         cur_state_file = os.path.join(device, FILE_NAME_CUR_STATE)
         with open(cur_state_file, "w") as f:
             f.write(str(speed))

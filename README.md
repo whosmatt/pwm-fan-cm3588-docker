@@ -20,7 +20,7 @@ Usage of this software is purely at your own risk. I am just sharing what I deve
    2025-04-10 23:19:59,743 - INFO - Current state is set to: 1
    ```
 2. Try setting some speed for the fan where 0 mean off, and any value above 0 upto "Maximum state" sets different speeds.
-   For example `./test.py 5` will set it to maximum speed on my machine.
+   For example `./test.py --desired-state 5` will set it to maximum speed on my machine. Running `./test.py --desired-state 0` switches off the fan on my machine.
 3. If all goes well, test a bit more as following instructions.
 
 ## Test even more before you install as background service.
