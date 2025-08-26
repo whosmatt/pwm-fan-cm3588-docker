@@ -45,12 +45,12 @@ Usage of this software is purely at your own risk. I am just sharing what I deve
 5. Enable the service by running `systemctl enable --now fan_control.service`
 
 Now you can see the logs by running `journalctl -u pwm-fan-cm3588`
-You can also configure the various parameters in the scriot itself by editing /usr/local/bin/fan_control.py (like temperature ranges which controls various fan speeds).
+You can also configure the various parameters in the script itself by editing /usr/local/bin/fan_control.py (like temperature ranges which controls various fan speeds).
 
 ## Steps to uninstall.
 1.  Disable the service by running `systemctl disable --now fan_control.service`
-2.  Delete /etc/systemd/system/fan_control.service
-3.  Delete /usr/local/bin/fan_control.py
+2.  Delete `/etc/systemd/system/fan_control.service`
+3.  Delete `/usr/local/bin/fan_control.py`
 4.  Run the command `systemctl daemon-reload`
 
 ## My setup
