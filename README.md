@@ -39,8 +39,8 @@ Usage of this software is purely at your own risk. I am just sharing what I deve
 
 ## Steps to get it running as background service.
 1. The script has dependency on python systemd module (to send log messages to system journal). I installed it using `apt-get install python3-systemd`
-2. Copy the file fan_control.py to fan_control.py
-3. Copy the file fan_control.service /etc/systemd/system/fan_control.service
+2. Copy the file `fan_control.py` to `/usr/local/bin/fan_control.py`
+3. Copy the file `fan_control.service` to `/etc/systemd/system/fan_control.service`
 4. Run the command `systemctl daemon-reload`
 5. Enable the service by running `systemctl enable --now fan_control.service`
 
