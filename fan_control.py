@@ -5,47 +5,36 @@ import logging
 import glob
 import subprocess
 import shutil
-from systemd.journal import JournalHandler
 
 # Set debug mode based on the environment variable "DEBUG"
 # The DEBUG variable can be set to "true", "True", or "1" (case-insensitive)
 DEBUG = os.environ.get("DEBUG", "1").lower() in ["1", "true", "on"]
 
-if DEBUG:
-    logging.basicConfig(
-        level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
-else:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[
-            JournalHandler(
-                SYSLOG_IDENTIFIER="fan_control"
-            ),  # Send logs to systemd journal
-            #       logging.FileHandler('/var/log/fan_controller.log'),  # Optional: Log to a file as well
-        ],
-    )
+
+# Always log to stdout/stderr (container output)
+logging.basicConfig(
+    level=logging.DEBUG if DEBUG else logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 logger = logging.getLogger(__name__)
 
-# Configuration variables
-SLEEP_TIME = 5 if DEBUG else 15
+# Configuration variables (read from environment)
+SLEEP_TIME = int(os.environ.get("SLEEP_TIME", 5 if DEBUG else 15))
+MIN_STATE = int(os.environ.get("MIN_STATE", 1))  # if you set it to 0, the fan will switch off when temperature falls below LOWER_TEMP_THRESHOLD
+LOWER_TEMP_THRESHOLD = float(os.environ.get("LOWER_TEMP_THRESHOLD", 45.0))
+UPPER_TEMP_THRESHOLD = float(os.environ.get("UPPER_TEMP_THRESHOLD", 65.0))
+MIN_DELTA = float(os.environ.get("MIN_DELTA", 0.01))  # Minimum temperature change to trigger speed change
 
-MIN_STATE = 1  # if you set it to 0, the fan will switch off when temperature falls below LOWER_TEMP_THRESHOLD
-LOWER_TEMP_THRESHOLD = 45.0
-UPPER_TEMP_THRESHOLD = 65.0
-MIN_DELTA = 0.01  # Minimum temperature change to trigger speed change
+NVME_DEVICES = os.environ.get("NVME_DEVICES", "/dev/nvme?")
+NVME_COMMAND = os.environ.get("NVME_COMMAND", "nvme")
 
-NVME_DEVICES = "/dev/nvme?"
-NVME_COMMAND = "nvme"
-
-THERMAL_DIR = "/sys/class/thermal"
-DEVICE_TYPE_PWM_FAN = "pwm-fan"
-THERMAL_ZONE_NAME = "thermal_zone"
-DEVICE_NAME_COOLING = "cooling_device"
-FILE_NAME_CUR_STATE = "cur_state"
+THERMAL_DIR = os.environ.get("THERMAL_DIR", "/sys/class/thermal")
+DEVICE_TYPE_PWM_FAN = os.environ.get("DEVICE_TYPE_PWM_FAN", "pwm-fan")
+THERMAL_ZONE_NAME = os.environ.get("THERMAL_ZONE_NAME", "thermal_zone")
+DEVICE_NAME_COOLING = os.environ.get("DEVICE_NAME_COOLING", "cooling_device")
+FILE_NAME_CUR_STATE = os.environ.get("FILE_NAME_CUR_STATE", "cur_state")
 
 
 def format_temp(value):

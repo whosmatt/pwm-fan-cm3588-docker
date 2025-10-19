@@ -1,3 +1,40 @@
+# pwm-fan-cm3588-docker
+Dockerized version of the application by [vijaygill](https://github.com/vijaygill/pwm-fan-cm3588).  
+Intended to be used and configured via docker-compose.  
+NVME monitoring is not available in this fork but can be implemented.  
+
+A multi-arch docker image is automatically built and pushed to docker hub as `whosmatt/pwm-fan-cm3588`
+
+## Example docker-compose file
+
+```yaml
+services:
+   pwm-fan:
+      image: whosmatt/pwm-fan-cm3588:latest
+      container_name: pwm-fan-cm3588
+      volumes:
+         - /sys/class/thermal:/sys/class/thermal:rw
+      privileged: true # Usually required for sysfs write access
+      restart: unless-stopped
+      environment:
+         # All variables are optional, these are the defaults
+         DEBUG: "0"
+         SLEEP_TIME: "15"
+         MIN_STATE: "1"
+         LOWER_TEMP_THRESHOLD: "45.0"
+         UPPER_TEMP_THRESHOLD: "65.0"
+         MIN_DELTA: "0.01"
+         NVME_DEVICES: "/dev/nvme?"
+         NVME_COMMAND: "nvme"
+         THERMAL_DIR: "/sys/class/thermal"
+         DEVICE_TYPE_PWM_FAN: "pwm-fan"
+         THERMAL_ZONE_NAME: "thermal_zone"
+         DEVICE_NAME_COOLING: "cooling_device"
+         FILE_NAME_CUR_STATE: "cur_state"
+```
+
+Tested on a CM3588 NAS running OMV 7 on Debian Bookworm using the openmediavault-compose plugin. 
+
 # pwm-fan-cm3588
 Control the 5V PWM fan on a [CM3588 NAS](https://www.friendlyelec.com/index.php?route=product/product&path=60&product_id=299).
 
