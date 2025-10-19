@@ -1,5 +1,5 @@
-# pwn-fan-cm3588-docker
-Dockerized version of the application below.  
+# pwm-fan-cm3588-docker
+Dockerized version of the application by [vijaygill](https://github.com/vijaygill/pwm-fan-cm3588).  
 Intended to be used and configured via docker-compose.  
 NVME monitoring is not available in this fork but can be implemented.  
 
@@ -33,9 +33,7 @@ services:
          FILE_NAME_CUR_STATE: "cur_state"
 ```
 
-**Notes:**
-- Mounting the entire `/sys/class/thermal` directory gives the container access to all thermal devices, which is usually sufficient for fan control and avoids the need for `privileged: true`.
-
+Tested on a CM3588 NAS running OMV 7 on Debian Bookworm using the openmediavault-compose plugin. 
 
 # pwm-fan-cm3588
 Control the 5V PWM fan on a [CM3588 NAS](https://www.friendlyelec.com/index.php?route=product/product&path=60&product_id=299).
