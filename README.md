@@ -13,7 +13,8 @@ services:
       image: whosmatt/pwm-fan-cm3588:latest
       container_name: pwm-fan-cm3588
       volumes:
-         - /sys/class/thermal:/sys/class/thermal
+         - /sys/class/thermal:/sys/class/thermal:rw
+      privileged: true # Usually required for sysfs write access
       restart: unless-stopped
       environment:
          # All variables are optional, these are the defaults
