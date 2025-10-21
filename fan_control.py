@@ -16,7 +16,6 @@ SLEEP_TIME = int(os.environ.get("SLEEP_TIME", 15))
 MIN_STATE = int(os.environ.get("MIN_STATE", 1))  # if you set it to 0, the fan will switch off when temperature falls below LOWER_TEMP_THRESHOLD
 LOWER_TEMP_THRESHOLD = float(os.environ.get("LOWER_TEMP_THRESHOLD", 45.0))
 UPPER_TEMP_THRESHOLD = float(os.environ.get("UPPER_TEMP_THRESHOLD", 65.0))
-MIN_DELTA = float(os.environ.get("MIN_DELTA", 0.01))  # Minimum temperature change to trigger speed change
 WRITE_SPAM_INTERVAL = os.environ.get("WRITE_SPAM_INTERVAL", "") # Some systems may require "spamming" writes to override kernel fan control, set to e.g. "0.05" to write every 50ms, or "" to disable
 
 NVME_DEVICES = os.environ.get("NVME_DEVICES", "/dev/nvme?")
