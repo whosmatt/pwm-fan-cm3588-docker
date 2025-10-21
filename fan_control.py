@@ -6,26 +6,17 @@ import glob
 import subprocess
 import shutil
 
-# Set debug mode based on the environment variable "DEBUG"
-# The DEBUG variable can be set to "true", "True", or "1" (case-insensitive)
-DEBUG = os.environ.get("DEBUG", "1").lower() in ["1", "true", "on"]
 
-
-# Always log to stdout/stderr (container output)
-logging.basicConfig(
-    level=logging.DEBUG if DEBUG else logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-
-logger = logging.getLogger(__name__)
+# Set log level based on the environment variable "LOGLEVEL"
+# Accepts: DEBUG, INFO, WARNING, ERROR, CRITICAL (case-insensitive)
+LOGLEVEL = os.environ.get("LOGLEVEL", "INFO").upper()
 
 # Configuration variables (read from environment)
-SLEEP_TIME = int(os.environ.get("SLEEP_TIME", 5 if DEBUG else 15))
+SLEEP_TIME = int(os.environ.get("SLEEP_TIME", 15))
 MIN_STATE = int(os.environ.get("MIN_STATE", 1))  # if you set it to 0, the fan will switch off when temperature falls below LOWER_TEMP_THRESHOLD
 LOWER_TEMP_THRESHOLD = float(os.environ.get("LOWER_TEMP_THRESHOLD", 45.0))
 UPPER_TEMP_THRESHOLD = float(os.environ.get("UPPER_TEMP_THRESHOLD", 65.0))
-MIN_DELTA = float(os.environ.get("MIN_DELTA", 0.01))  # Minimum temperature change to trigger speed change
+WRITE_SPAM_INTERVAL = os.environ.get("WRITE_SPAM_INTERVAL", "") # Some systems may require "spamming" writes to override kernel fan control, set to e.g. "0.05" to write every 50ms, or "" to disable
 
 NVME_DEVICES = os.environ.get("NVME_DEVICES", "/dev/nvme?")
 NVME_COMMAND = os.environ.get("NVME_COMMAND", "nvme")
@@ -35,7 +26,26 @@ DEVICE_TYPE_PWM_FAN = os.environ.get("DEVICE_TYPE_PWM_FAN", "pwm-fan")
 THERMAL_ZONE_NAME = os.environ.get("THERMAL_ZONE_NAME", "thermal_zone")
 DEVICE_NAME_COOLING = os.environ.get("DEVICE_NAME_COOLING", "cooling_device")
 FILE_NAME_CUR_STATE = os.environ.get("FILE_NAME_CUR_STATE", "cur_state")
+# Or skip the cooling device detection and use a single specific fan such as "cooling_device0"
+COOLING_DEVICE_OVERRIDE = os.environ.get("COOLING_DEVICE_OVERRIDE", "")
 
+
+_LOGLEVEL_MAP = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+_loglevel = _LOGLEVEL_MAP.get(LOGLEVEL, logging.INFO)
+
+# Always log to stdout/stderr (container output)
+logging.basicConfig(
+    level=_loglevel,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
 
 def format_temp(value):
     res = f"{value:.2f}°C"
@@ -43,6 +53,13 @@ def format_temp(value):
 
 
 def get_fan_device():
+    if COOLING_DEVICE_OVERRIDE:
+        dev_path = os.path.join(THERMAL_DIR, COOLING_DEVICE_OVERRIDE)
+        if os.path.exists(dev_path):
+            return dev_path
+        else:
+            logger.error(f"COOLING_DEVICE_OVERRIDE set to '{COOLING_DEVICE_OVERRIDE}', but device not found at {dev_path}")
+            return None
     for device in os.listdir(THERMAL_DIR):
         if device.startswith(DEVICE_NAME_COOLING):
             dev_path = os.path.join(THERMAL_DIR, device)
@@ -69,7 +86,7 @@ def get_fan_speed(device):
 
 def set_fan_speed(device, speed):
     try:
-        logger.warning(f"setting fan speed to {speed}")
+        logger.info(f"setting fan speed to {speed}")
         cur_state_file = os.path.join(device, FILE_NAME_CUR_STATE)
         with open(cur_state_file, "w") as f:
             f.write(str(speed))
@@ -77,6 +94,14 @@ def set_fan_speed(device, speed):
     except Exception as e:
         logger.error(f"Error setting fan speed: {e}")
     return False
+
+
+def spam_fan_speed(device, speed, duration, interval):
+    import time
+    end_time = time.time() + duration
+    while time.time() < end_time:
+        set_fan_speed(device, speed)
+        time.sleep(interval)
 
 
 def get_temperature_slots():
@@ -116,7 +141,7 @@ def adjust_speed_based_on_temperature(current_temp):
         current_temp (float): The current temperature.
 
     Returns:
-        None
+        (fan_device, desired_state): tuple of device and setpoint
     """
     temperature_slots = get_temperature_slots()
     desired_slot = [
@@ -135,13 +160,12 @@ def adjust_speed_based_on_temperature(current_temp):
 
     desired_state, _ = desired_slot
 
-    # Update fan speed only if needed
     fan_device = get_fan_device()
-    if get_fan_speed(fan_device) != desired_state:
-        logger.info(
-            f"fan speed needs to be changed to: {desired_state} (current_temp: {format_temp(current_temp)} | slot: {desired_slot})"
-        )
-        set_fan_speed(fan_device, desired_state)
+    logger.info(
+        f"setting fan speed to: {desired_state} (current_temp: {format_temp(current_temp)} | slot: {desired_slot})"
+    )
+    set_fan_speed(fan_device, desired_state)
+    return fan_device, desired_state
 
 
 def check_command_exists(command):
@@ -245,7 +269,8 @@ def get_current_temp():
 
 def adjust_fan():
     current_temp = get_current_temp()
-    adjust_speed_based_on_temperature(current_temp)
+    return adjust_speed_based_on_temperature(current_temp)
+
 
 
 def main():
@@ -274,10 +299,20 @@ def main():
             f"The command {NVME_COMMAND} does not exist. Install using apt/apt-get."
         )
 
+    try:
+        write_spam_interval = float(WRITE_SPAM_INTERVAL) if WRITE_SPAM_INTERVAL else None
+    except Exception:
+        logger.error(f"Invalid WRITE_SPAM_INTERVAL value: {WRITE_SPAM_INTERVAL}")
+        write_spam_interval = None
+
     while True:
-        adjust_fan()
-        logger.debug(f"sleeping for {SLEEP_TIME} seconds")
-        time.sleep(SLEEP_TIME)  # Check temperature after a delay
+        fan_device, setpoint = adjust_fan()
+        if write_spam_interval:
+            logger.debug(f"Spamming fan setpoint {setpoint} to {fan_device} every {write_spam_interval} seconds for {SLEEP_TIME} seconds")
+            spam_fan_speed(fan_device, setpoint, SLEEP_TIME, write_spam_interval)
+        else:
+            logger.debug(f"sleeping for {SLEEP_TIME} seconds")
+            time.sleep(SLEEP_TIME)  # Check temperature after a delay
 
 
 def test():
