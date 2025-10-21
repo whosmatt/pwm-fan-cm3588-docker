@@ -6,22 +6,13 @@ import glob
 import subprocess
 import shutil
 
-# Set debug mode based on the environment variable "DEBUG"
-# The DEBUG variable can be set to "true", "True", or "1" (case-insensitive)
-DEBUG = os.environ.get("DEBUG", "1").lower() in ["1", "true", "on"]
 
-
-# Always log to stdout/stderr (container output)
-logging.basicConfig(
-    level=logging.DEBUG if DEBUG else logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-
-logger = logging.getLogger(__name__)
+# Set log level based on the environment variable "LOGLEVEL"
+# Accepts: DEBUG, INFO, WARNING, ERROR, CRITICAL (case-insensitive)
+LOGLEVEL = os.environ.get("LOGLEVEL", "INFO").upper()
 
 # Configuration variables (read from environment)
-SLEEP_TIME = int(os.environ.get("SLEEP_TIME", 5 if DEBUG else 15))
+SLEEP_TIME = int(os.environ.get("SLEEP_TIME", 15))
 MIN_STATE = int(os.environ.get("MIN_STATE", 1))  # if you set it to 0, the fan will switch off when temperature falls below LOWER_TEMP_THRESHOLD
 LOWER_TEMP_THRESHOLD = float(os.environ.get("LOWER_TEMP_THRESHOLD", 45.0))
 UPPER_TEMP_THRESHOLD = float(os.environ.get("UPPER_TEMP_THRESHOLD", 65.0))
@@ -38,6 +29,23 @@ FILE_NAME_CUR_STATE = os.environ.get("FILE_NAME_CUR_STATE", "cur_state")
 # Or skip the cooling device detection and use a single specific fan such as "cooling_device0"
 COOLING_DEVICE_OVERRIDE = os.environ.get("COOLING_DEVICE_OVERRIDE", "")
 
+
+_LOGLEVEL_MAP = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+_loglevel = _LOGLEVEL_MAP.get(LOGLEVEL, logging.INFO)
+
+# Always log to stdout/stderr (container output)
+logging.basicConfig(
+    level=_loglevel,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
 
 def format_temp(value):
     res = f"{value:.2f}°C"
@@ -78,7 +86,7 @@ def get_fan_speed(device):
 
 def set_fan_speed(device, speed):
     try:
-        logger.warning(f"setting fan speed to {speed}")
+        logger.info(f"setting fan speed to {speed}")
         cur_state_file = os.path.join(device, FILE_NAME_CUR_STATE)
         with open(cur_state_file, "w") as f:
             f.write(str(speed))
