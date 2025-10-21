@@ -17,6 +17,7 @@ MIN_STATE = int(os.environ.get("MIN_STATE", 1))  # if you set it to 0, the fan w
 LOWER_TEMP_THRESHOLD = float(os.environ.get("LOWER_TEMP_THRESHOLD", 45.0))
 UPPER_TEMP_THRESHOLD = float(os.environ.get("UPPER_TEMP_THRESHOLD", 65.0))
 MIN_DELTA = float(os.environ.get("MIN_DELTA", 0.01))  # Minimum temperature change to trigger speed change
+WRITE_SPAM_INTERVAL = os.environ.get("WRITE_SPAM_INTERVAL", "") # Some systems may require "spamming" writes to override kernel fan control, set to e.g. "0.05" to write every 50ms, or "" to disable
 
 NVME_DEVICES = os.environ.get("NVME_DEVICES", "/dev/nvme?")
 NVME_COMMAND = os.environ.get("NVME_COMMAND", "nvme")
@@ -96,6 +97,14 @@ def set_fan_speed(device, speed):
     return False
 
 
+def spam_fan_speed(device, speed, duration, interval):
+    import time
+    end_time = time.time() + duration
+    while time.time() < end_time:
+        set_fan_speed(device, speed)
+        time.sleep(interval)
+
+
 def get_temperature_slots():
     """
     Creates predefined temperature thresholds and corresponding fan states.
@@ -133,7 +142,7 @@ def adjust_speed_based_on_temperature(current_temp):
         current_temp (float): The current temperature.
 
     Returns:
-        None
+        (fan_device, desired_state): tuple of device and setpoint
     """
     temperature_slots = get_temperature_slots()
     desired_slot = [
@@ -152,13 +161,12 @@ def adjust_speed_based_on_temperature(current_temp):
 
     desired_state, _ = desired_slot
 
-    # Update fan speed only if needed
     fan_device = get_fan_device()
-    if get_fan_speed(fan_device) != desired_state:
-        logger.info(
-            f"fan speed needs to be changed to: {desired_state} (current_temp: {format_temp(current_temp)} | slot: {desired_slot})"
-        )
-        set_fan_speed(fan_device, desired_state)
+    logger.info(
+        f"setting fan speed to: {desired_state} (current_temp: {format_temp(current_temp)} | slot: {desired_slot})"
+    )
+    set_fan_speed(fan_device, desired_state)
+    return fan_device, desired_state
 
 
 def check_command_exists(command):
@@ -262,7 +270,8 @@ def get_current_temp():
 
 def adjust_fan():
     current_temp = get_current_temp()
-    adjust_speed_based_on_temperature(current_temp)
+    return adjust_speed_based_on_temperature(current_temp)
+
 
 
 def main():
@@ -291,10 +300,20 @@ def main():
             f"The command {NVME_COMMAND} does not exist. Install using apt/apt-get."
         )
 
+    try:
+        write_spam_interval = float(WRITE_SPAM_INTERVAL) if WRITE_SPAM_INTERVAL else None
+    except Exception:
+        logger.error(f"Invalid WRITE_SPAM_INTERVAL value: {WRITE_SPAM_INTERVAL}")
+        write_spam_interval = None
+
     while True:
-        adjust_fan()
-        logger.debug(f"sleeping for {SLEEP_TIME} seconds")
-        time.sleep(SLEEP_TIME)  # Check temperature after a delay
+        fan_device, setpoint = adjust_fan()
+        if write_spam_interval:
+            logger.debug(f"Spamming fan setpoint {setpoint} to {fan_device} every {write_spam_interval} seconds for {SLEEP_TIME} seconds")
+            spam_fan_speed(fan_device, setpoint, SLEEP_TIME, write_spam_interval)
+        else:
+            logger.debug(f"sleeping for {SLEEP_TIME} seconds")
+            time.sleep(SLEEP_TIME)  # Check temperature after a delay
 
 
 def test():
