@@ -35,6 +35,8 @@ DEVICE_TYPE_PWM_FAN = os.environ.get("DEVICE_TYPE_PWM_FAN", "pwm-fan")
 THERMAL_ZONE_NAME = os.environ.get("THERMAL_ZONE_NAME", "thermal_zone")
 DEVICE_NAME_COOLING = os.environ.get("DEVICE_NAME_COOLING", "cooling_device")
 FILE_NAME_CUR_STATE = os.environ.get("FILE_NAME_CUR_STATE", "cur_state")
+# Or skip the cooling device detection and use a single specific fan such as "cooling_device0"
+COOLING_DEVICE_OVERRIDE = os.environ.get("COOLING_DEVICE_OVERRIDE", "")
 
 
 def format_temp(value):
@@ -43,6 +45,13 @@ def format_temp(value):
 
 
 def get_fan_device():
+    if COOLING_DEVICE_OVERRIDE:
+        dev_path = os.path.join(THERMAL_DIR, COOLING_DEVICE_OVERRIDE)
+        if os.path.exists(dev_path):
+            return dev_path
+        else:
+            logger.error(f"COOLING_DEVICE_OVERRIDE set to '{COOLING_DEVICE_OVERRIDE}', but device not found at {dev_path}")
+            return None
     for device in os.listdir(THERMAL_DIR):
         if device.startswith(DEVICE_NAME_COOLING):
             dev_path = os.path.join(THERMAL_DIR, device)
