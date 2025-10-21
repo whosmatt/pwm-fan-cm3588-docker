@@ -5,7 +5,9 @@ NVME monitoring is not available in this fork but can be implemented.
 
 A multi-arch docker image is automatically built and pushed to docker hub as `whosmatt/pwm-fan-cm3588`
 
-## Example docker-compose file
+## Example docker-compose files
+
+### Example with default settings
 
 ```yaml
 services:
@@ -18,12 +20,11 @@ services:
       restart: unless-stopped
       environment:
          # All variables are optional, these are the defaults
-         DEBUG: "0"
+         LOGLEVEL: "INFO"                # Set to DEBUG, INFO, WARNING, ERROR, or CRITICAL
          SLEEP_TIME: "15"
          MIN_STATE: "1"
          LOWER_TEMP_THRESHOLD: "45.0"
          UPPER_TEMP_THRESHOLD: "65.0"
-         MIN_DELTA: "0.01"
          NVME_DEVICES: "/dev/nvme?"
          NVME_COMMAND: "nvme"
          THERMAL_DIR: "/sys/class/thermal"
@@ -31,9 +32,50 @@ services:
          THERMAL_ZONE_NAME: "thermal_zone"
          DEVICE_NAME_COOLING: "cooling_device"
          FILE_NAME_CUR_STATE: "cur_state"
+         COOLING_DEVICE_OVERRIDE: ""      # Set to e.g. "cooling_device0" to use a specific device, or leave blank for auto-detect
+         WRITE_SPAM_INTERVAL: ""          # Set to e.g. "0.02" (in seconds) to spam writes, or leave blank to disable
 ```
 
-Tested on a CM3588 NAS running OMV 7 on Debian Bookworm using the openmediavault-compose plugin. 
+### Example for CM3588 NAS running the official OpenMediaVault image
+
+```yaml
+services:
+   pwm-fan:
+      image: whosmatt/pwm-fan-cm3588:latest
+      container_name: pwm-fan-cm3588
+      volumes:
+         - /sys/class/thermal:/sys/class/thermal:rw
+      privileged: true
+      restart: unless-stopped
+      environment:
+         LOGLEVEL: "ERROR"
+         SLEEP_TIME: "15"
+         MIN_STATE: "0"
+         LOWER_TEMP_THRESHOLD: "60.0"
+         UPPER_TEMP_THRESHOLD: "70.0"
+         NVME_DEVICES: ""
+         COOLING_DEVICE_OVERRIDE: "cooling_device5"
+         WRITE_SPAM_INTERVAL: "0.1"
+```
+
+## Configuration Variables
+
+| Variable                | Default   | Description                                                                 |
+|-------------------------|-----------|-----------------------------------------------------------------------------|
+| LOGLEVEL                | INFO      | Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL                        |
+| SLEEP_TIME              | 15        | Seconds between temperature checks                                          |
+| MIN_STATE               | 1         | Minimum fan state (0 = off, 1 = always on)                                  |
+| LOWER_TEMP_THRESHOLD    | 45.0      | Lower temperature threshold (°C)                                            |
+| UPPER_TEMP_THRESHOLD    | 65.0      | Upper temperature threshold (°C)                                            |
+| NVME_DEVICES            | /dev/nvme?| Glob for NVMe devices                                                       |
+| NVME_COMMAND            | nvme      | Command to use for NVMe info                                                |
+| THERMAL_DIR             | /sys/class/thermal | Path to thermal sysfs directory                                 |
+| DEVICE_TYPE_PWM_FAN     | pwm-fan   | String to match in cooling device type file                                 |
+| THERMAL_ZONE_NAME       | thermal_zone | Prefix for CPU thermal zones                                            |
+| DEVICE_NAME_COOLING     | cooling_device | Prefix for cooling devices                                            |
+| FILE_NAME_CUR_STATE     | cur_state | Filename for current fan state                                             |
+| COOLING_DEVICE_OVERRIDE |   ""      | Set to e.g. "cooling_device0" to use a specific device, or blank for auto  |
+| WRITE_SPAM_INTERVAL     |   ""      | If set (e.g. 0.02), repeatedly writes fan state every N seconds            |
 
 # pwm-fan-cm3588
 Control the 5V PWM fan on a [CM3588 NAS](https://www.friendlyelec.com/index.php?route=product/product&path=60&product_id=299).
