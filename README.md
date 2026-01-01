@@ -34,6 +34,7 @@ services:
          FILE_NAME_CUR_STATE: "cur_state"
          COOLING_DEVICE_OVERRIDE: ""      # Set to e.g. "cooling_device0" to use a specific device, or leave blank for auto-detect
          WRITE_SPAM_INTERVAL: ""          # Set to e.g. "0.02" (in seconds) to spam writes, or leave blank to disable
+         GRACE_PERIOD: "1"              # Number of cycles (SLEEP_TIME intervals) to wait before lowering fan speed when temp is between thresholds
 ```
 
 ### Example for CM3588 NAS running the official OpenMediaVault image
@@ -76,6 +77,7 @@ services:
 | FILE_NAME_CUR_STATE     | cur_state | Filename for current fan state                                             |
 | COOLING_DEVICE_OVERRIDE |   ""      | Set to e.g. "cooling_device0" to use a specific device, or blank for auto  |
 | WRITE_SPAM_INTERVAL     |   ""      | If set (e.g. 0.02), repeatedly writes fan state every N seconds            |
+| GRACE_PERIOD            | 1         | Number of cycles to wait before lowering fan speed when temp is between LOWER and UPPER threshold |
 
 # pwm-fan-cm3588
 Control the 5V PWM fan on a [CM3588 NAS](https://www.friendlyelec.com/index.php?route=product/product&path=60&product_id=299).

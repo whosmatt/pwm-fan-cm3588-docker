@@ -17,6 +17,7 @@ MIN_STATE = int(os.environ.get("MIN_STATE", 1))  # if you set it to 0, the fan w
 LOWER_TEMP_THRESHOLD = float(os.environ.get("LOWER_TEMP_THRESHOLD", 45.0))
 UPPER_TEMP_THRESHOLD = float(os.environ.get("UPPER_TEMP_THRESHOLD", 65.0))
 WRITE_SPAM_INTERVAL = os.environ.get("WRITE_SPAM_INTERVAL", "") # Some systems may require "spamming" writes to override kernel fan control, set to e.g. "0.05" to write every 50ms, or "" to disable
+GRACE_PERIOD = int(os.environ.get("GRACE_PERIOD", 1))  # Number of SLEEP_TIME cycles that temperature must remain above LOWER_TEMP_THRESHOLD before adjusting fan speed
 
 NVME_DEVICES = os.environ.get("NVME_DEVICES", "/dev/nvme?")
 NVME_COMMAND = os.environ.get("NVME_COMMAND", "nvme")
@@ -267,10 +268,24 @@ def get_current_temp():
     return max_temp
 
 
-def adjust_fan():
-    current_temp = get_current_temp()
-    return adjust_speed_based_on_temperature(current_temp)
+def adjust_fan(current_temp, grace_counter):
+    # Bypass grace period if temperature exceeds UPPER_TEMP_THRESHOLD
+    if current_temp > UPPER_TEMP_THRESHOLD:
+        grace_counter = 0
+        fan_device, desired_state = adjust_speed_based_on_temperature(current_temp)
+        return fan_device, desired_state, grace_counter
 
+    if current_temp > LOWER_TEMP_THRESHOLD:
+        grace_counter += 1
+        if grace_counter < GRACE_PERIOD:
+            fan_device = get_fan_device()
+            desired_state = get_fan_speed(fan_device)
+            return fan_device, desired_state, grace_counter
+    else:
+        grace_counter = 0
+
+    fan_device, desired_state = adjust_speed_based_on_temperature(current_temp)
+    return fan_device, desired_state, grace_counter
 
 
 def main():
@@ -305,8 +320,11 @@ def main():
         logger.error(f"Invalid WRITE_SPAM_INTERVAL value: {WRITE_SPAM_INTERVAL}")
         write_spam_interval = None
 
+    grace_counter = 0
+
     while True:
-        fan_device, setpoint = adjust_fan()
+        current_temp = get_current_temp()
+        fan_device, setpoint, grace_counter = adjust_fan(current_temp, grace_counter)
         if write_spam_interval:
             logger.debug(f"Spamming fan setpoint {setpoint} to {fan_device} every {write_spam_interval} seconds for {SLEEP_TIME} seconds")
             spam_fan_speed(fan_device, setpoint, SLEEP_TIME, write_spam_interval)
